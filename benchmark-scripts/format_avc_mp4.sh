@@ -82,10 +82,18 @@ fi
 
 echo "$WIDTH $HEIGHT $FPS"
 SAMPLE_MEDIA_DIR="$PWD"/../sample-media
-docker run --network host --privileged --user root --ipc=host -e VIDEO_FILE="$1" -e DISPLAY=:0 \
+
+# Check if we're in an interactive environment
+DOCKER_FLAGS="--network host --privileged --user root --ipc=host -e VIDEO_FILE=\"$1\" -e DISPLAY=:0"
+if [ -t 0 ] && [ -t 1 ]; then
+    # Interactive mode - use -it flags
+    DOCKER_FLAGS="$DOCKER_FLAGS -it"
+fi
+
+docker run $DOCKER_FLAGS \
 	-v /tmp/.X11-unix:/tmp/.X11-unix \
 	-v "$SAMPLE_MEDIA_DIR"/:/vids \
-	-w /vids -it  --rm intel/dlstreamer:2025.0.1-dev-ubuntu22 \
+	-w /vids --rm intel/dlstreamer:2025.0.1.3-ubuntu24 \
 	bash -c "if [ -f /vids/$result ]; then exit 1; else gst-launch-1.0 filesrc location=/vids/$1 ! qtdemux ! h264parse ! vaapih264dec ! vaapipostproc width=$WIDTH height=$HEIGHT ! videorate ! 'video/x-raw, framerate=$FPS/1' ! vaapih264enc ! h264parse ! mp4mux ! filesink location=/vids/$result; fi"
 
 rm ../sample-media/"$1"
